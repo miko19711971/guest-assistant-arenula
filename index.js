@@ -190,7 +190,7 @@ input{flex:1;padding:12px;border:1px solid #cbd5e1;border-radius:10px;outline:no
   <header>
     <div class="h-row">
       <div class="h-left">
-        <img class="logo" src="logo-niceflatinrome.png" alt="NiceFlatInRome">
+       <img class="logo" src="logo.png" alt="NiceFlatInRome">
         <div class="brand">niceflatinrome.com</div>
       </div>
       <div class="apt">Apartment: ARENULA16</div>
