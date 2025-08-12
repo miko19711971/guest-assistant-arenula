@@ -8,6 +8,9 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+// 👉 serve static files (logo.png, favicon.ico, etc.) from repo root
+app.use(express.static('.'));
+
 // ---------- Apartment data (Arenula 16) ----------
 const apartment = {
   apartment_id: 'ARENULA16',
@@ -162,6 +165,7 @@ app.get('/', (_req,res)=>{
 <html lang="en"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Guest Help — Via Arenula 16</title>
+<link rel="icon" type="image/png" href="logo.png">
 <style>
 *{box-sizing:border-box} body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:#f6f6f6}
 .wrap{max-width:760px;margin:0 auto;min-height:100vh;display:flex;flex-direction:column}
@@ -190,7 +194,7 @@ input{flex:1;padding:12px;border:1px solid #cbd5e1;border-radius:10px;outline:no
   <header>
     <div class="h-row">
       <div class="h-left">
-       <img class="logo" src="logo.png" alt="NiceFlatInRome">
+        <img class="logo" src="logo.png" alt="NiceFlatInRome">
         <div class="brand">niceflatinrome.com</div>
       </div>
       <div class="apt">Apartment: ARENULA16</div>
@@ -207,7 +211,6 @@ input{flex:1;padding:12px;border:1px solid #cbd5e1;border-radius:10px;outline:no
     <button id="sendBtn">Send</button>
   </footer>
 </div>
-
 <script>
 const chatEl = document.getElementById('chat');
 const input = document.getElementById('input');
