@@ -11,7 +11,7 @@ app.use(express.json());
 // serve static files (logo, favicon) from repo root
 app.use(express.static('.'));
 
-// ---------- Apartment data (Arenula 16) ----------
+// ---------- Apartment data (ARENULA 16) ----------
 const apartment = {
   apartment_id: 'ARENULA16',
   name: 'Via Arenula 16',
@@ -119,15 +119,15 @@ const OPENAI_API_KEY = process.env.OPENAI_API_KEY || '';
 const OPENAI_MODEL = process.env.OPENAI_MODEL || 'gpt-4o-mini';
 const client = OPENAI_API_KEY ? new OpenAI({ apiKey: OPENAI_API_KEY }) : null;
 
-function norm(s){return (s||'').toLowerCase().replace(/\s+/g,' ').trim();}
+function norm(s){ return (s||'').toLowerCase().replace(/\s+/g,' ').trim(); }
 function detectIntent(msg){
   const t = norm(msg); let best=null, scoreBest=0;
-  for (const f of faqs){
-    let s=0; for (const u of f.utterances){ if (t.includes(norm(u))) s++; }
+  for (const f of faqs){ let s=0; for (const u of f.utterances){ if (t.includes(norm(u))) s++; }
     if (s>scoreBest){ best=f; scoreBest=s; }
-  } return scoreBest>0?best:null;
+  }
+  return scoreBest>0 ? best : null;
 }
-function fill(tpl, obj){ return tpl.replace(/\{(\w+)\}/g,(_,k)=>obj[k]??`{${k}}`); }
+function fill(tpl, obj){ return tpl.replace(/\{(\w+)\}/g,(_,k)=>obj[k] ?? `{${k}}`); }
 
 async function polishEN(raw, userMsg){
   if (!client) return raw;
@@ -136,9 +136,9 @@ async function polishEN(raw, userMsg){
     const r = await client.responses.create({
       model: OPENAI_MODEL,
       input: [
-        {role:'system', content: sys},
-        {role:'developer', content: `Apartment data: ${JSON.stringify(apartment)}`},
-        {role:'user', content: `Guest asked: ${userMsg}\nDraft answer:\n${raw}`}
+        { role:'system', content: sys },
+        { role:'developer', content: `Apartment data: ${JSON.stringify(apartment)}` },
+        { role:'user', content: `Guest asked: ${userMsg}\nDraft answer:\n${raw}` }
       ]
     });
     return r.output_text || raw;
@@ -150,7 +150,7 @@ app.post('/api/message', async (req,res)=>{
   const { message='' } = req.body || {};
   const m = detectIntent(message);
   let raw = m ? fill(m.answer_template, apartment)
-              : 'I did not find a direct answer. Try a quick button or use keywords (wifi, transport, eat…).';
+              : 'I did not find a direct answer. Try a button or use keywords (wifi, gas, transport, eat…).';
   const text = await polishEN(raw, message);
   res.json({ text, intent: m?.intent || null });
 });
@@ -189,7 +189,6 @@ main{flex:1;padding:12px}
 footer{position:sticky;bottom:0;background:#fff;display:flex;gap:8px;padding:10px;border-top:1px solid #e0e0e0}
 input{flex:1;padding:12px;border:1px solid #cbd5e1;border-radius:10px;outline:none}
 #sendBtn{padding:12px 14px;border:1px solid #2b2118;background:#2b2118;color:#fff;border-radius:10px;cursor:pointer}
-.hint{font-size:14px;opacity:.8;margin:8px 0 2px}
 </style></head>
 <body>
 <div class="wrap">
@@ -218,7 +217,7 @@ const chatEl = document.getElementById('chat');
 const input = document.getElementById('input');
 const sendBtn = document.getElementById('sendBtn');
 
-// Voice (Samantha – EN only, not prepended to replies)
+// Voice (Samantha – EN only, no name announcement)
 let voiceOn = false, pick = null;
 function pickSamantha(){
   const all = window.speechSynthesis ? (speechSynthesis.getVoices()||[]) : [];
@@ -245,7 +244,7 @@ function add(type, txt){
   chatEl.scrollTop=chatEl.scrollHeight;
 }
 function welcome(){
-  add('wd',"Hi, I’m Samantha — your virtual assistant.\nTap a button to get a quick answer.");
+  add('wd',"I’m Samantha, your virtual guide. Tap a button for quick answers.");
   const q=document.createElement('div'); q.className='quick';
   const items=${JSON.stringify(buttons)};
   for(const it of items){
