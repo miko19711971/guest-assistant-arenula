@@ -8,7 +8,7 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// 👉 serve static files (logo.png, favicon.ico, etc.) from repo root
+// serve static files (logo, favicon) from repo root
 app.use(express.static('.'));
 
 // ---------- Apartment data (Arenula 16) ----------
@@ -19,7 +19,7 @@ const apartment = {
   checkin_time: '15:00',
   checkout_time: '11:00',
 
-  // Wi-Fi
+  // Wi‑Fi
   wifi_note: 'Router on the desk by the window. Turn it to see SSID & password.',
   wifi_ssid: 'See router label',
   wifi_password: 'See router label',
@@ -50,28 +50,28 @@ const apartment = {
 
   // Transport
   transport:
-    "Tram 8 (Arenula/Cairoli) → Trastevere or Piazza Venezia. Bus 40/64 → Termini & Vatican. Taxi: +39 06 3570 or FreeNow app.",
+    'Tram 8 (Arenula/Cairoli) → Trastevere or Piazza Venezia. Bus 40/64 → Termini & Vatican. Taxi: +39 06 3570 or FreeNow app.',
   airports:
-    "Fiumicino: Tram 8 → Trastevere → FL1 train (~45 min). Ciampino: Terravision bus or taxi. Private transfer: Welcome Pickups.",
+    'Fiumicino: Tram 8 → Trastevere → FL1 train (~45 min). Ciampino: Terravision bus or taxi. Private transfer: Welcome Pickups.',
 
   // Safety
   emergency:
-    "EU Emergency 112 • Police 113 • Ambulance 118 • Fire 115 • English doctor +39 06 488 2371 • 24h vet +39 06 660 681",
+    'EU Emergency 112 • Police 113 • Ambulance 118 • Fire 115 • English doctor +39 06 488 2371 • 24h vet +39 06 660 681',
 
   // Eat/Drink/See
-  eat: "Roscioli; Emma Pizzeria; Ditirambo; Osteria da Fortunata; Pianostrada; Forno Campo de’ Fiori; Gelateria del Teatro.",
-  drink: "Caffè Camerino (Largo Arenula 30); Irish Pub (Largo Argentina); Modius Radisson Rooftop.",
-  shop: "Via Arenula delis/bakeries/gelato; Piazza Costaguti fish market; Forno Boccione; Mercato Monti (weekends).",
+  eat: 'Roscioli; Emma Pizzeria; Ditirambo; Osteria da Fortunata; Pianostrada; Forno Campo de’ Fiori; Gelateria del Teatro.',
+  drink: 'Caffè Camerino (Largo Arenula 30); Irish Pub (Largo Argentina); Modius Radisson Rooftop.',
+  shop: 'Via Arenula delis/bakeries/gelato; Piazza Costaguti fish market; Forno Boccione; Mercato Monti (weekends).',
   visit:
-    "Largo di Torre Argentina (temples & cat sanctuary); Portico d’Ottavia; Tiber Island; Piazza Farnese; hidden churches (Chiesa Nuova, S. Maria in Campitelli, S. Barbara dei Librari).",
+    'Largo di Torre Argentina (temples & cat sanctuary); Portico d’Ottavia; Tiber Island; Piazza Farnese; hidden churches (Chiesa Nuova, S. Maria in Campitelli, S. Barbara dei Librari).',
   experiences:
-    "Evening walk: Largo Argentina → Ghetto → Tiber Island → Teatro di Marcello; aperitivo at Camerino or Modius; pastries at Forno Boccione; sunset on Lungotevere.",
+    'Evening walk: Largo Argentina → Ghetto → Tiber Island → Teatro di Marcello; aperitivo at Camerino or Modius; pastries at Forno Boccione; sunset on Lungotevere.',
   daytrips:
-    "Ostia Antica (~40 min); Tivoli (Villa d’Este & Hadrian’s Villa ~1h); Castelli Romani (villages & wine).",
+    'Ostia Antica (~40 min); Tivoli (Villa d’Este & Hadrian’s Villa ~1h); Castelli Romani (villages & wine).',
 
-  // Check-out
+  // Check‑out
   checkout_note:
-    "Before leaving: turn off lights/AC, close windows, leave keys on the table, gently close the door.",
+    'Before leaving: turn off lights/AC, close windows, leave keys on the table, gently close the door.',
 
   host_phone: '+39 335 5245756'
 };
@@ -79,9 +79,9 @@ const apartment = {
 // ---------- FAQ (keyword → template) ----------
 const faqs = [
   { intent: 'wifi', utterances: ['wifi','wi-fi','internet','password','router'],
-    answer_template: `Wi-Fi: {wifi_note}\nNetwork: {wifi_ssid}. Password: {wifi_password}.` },
+    answer_template: `Wi‑Fi: {wifi_note}\nNetwork: {wifi_ssid}. Password: {wifi_password}.` },
   { intent: 'check in', utterances: ['check in','arrival','access','intercom','code'],
-    answer_template: `Check-in from {checkin_time}. Intercom code: {intercom_code}. Main door hours: {main_door_hours}. Concierge: {concierge}. Need help? Call {host_phone}.` },
+    answer_template: `Check‑in from {checkin_time}. Intercom code: {intercom_code}. Main door hours: {main_door_hours}. Concierge: {concierge}. Need help? Call {host_phone}.` },
   { intent: 'check out', utterances: ['check out','leave','departure'],
     answer_template: `{checkout_note}` },
   { intent: 'water', utterances: ['water','hot water','drinkable','tap'],
@@ -122,7 +122,8 @@ const client = OPENAI_API_KEY ? new OpenAI({ apiKey: OPENAI_API_KEY }) : null;
 function norm(s){return (s||'').toLowerCase().replace(/\s+/g,' ').trim();}
 function detectIntent(msg){
   const t = norm(msg); let best=null, scoreBest=0;
-  for (const f of faqs){ let s=0; for (const u of f.utterances){ if (t.includes(norm(u))) s++; }
+  for (const f of faqs){
+    let s=0; for (const u of f.utterances){ if (t.includes(norm(u))) s++; }
     if (s>scoreBest){ best=f; scoreBest=s; }
   } return scoreBest>0?best:null;
 }
@@ -149,7 +150,7 @@ app.post('/api/message', async (req,res)=>{
   const { message='' } = req.body || {};
   const m = detectIntent(message);
   let raw = m ? fill(m.answer_template, apartment)
-              : 'I did not find a direct answer. Try a button or use keywords (wifi, gas, transport, eat…).';
+              : 'I did not find a direct answer. Try a quick button or use keywords (wifi, transport, eat…).';
   const text = await polishEN(raw, message);
   res.json({ text, intent: m?.intent || null });
 });
@@ -165,7 +166,7 @@ app.get('/', (_req,res)=>{
 <html lang="en"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Guest Help — Via Arenula 16</title>
-<link rel="icon" type="image/png" href="logo.png">
+<link rel="icon" type="image/png" href="logo-niceflatinrome.jpg">
 <style>
 *{box-sizing:border-box} body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:#f6f6f6}
 .wrap{max-width:760px;margin:0 auto;min-height:100vh;display:flex;flex-direction:column}
@@ -188,6 +189,7 @@ main{flex:1;padding:12px}
 footer{position:sticky;bottom:0;background:#fff;display:flex;gap:8px;padding:10px;border-top:1px solid #e0e0e0}
 input{flex:1;padding:12px;border:1px solid #cbd5e1;border-radius:10px;outline:none}
 #sendBtn{padding:12px 14px;border:1px solid #2b2118;background:#2b2118;color:#fff;border-radius:10px;cursor:pointer}
+.hint{font-size:14px;opacity:.8;margin:8px 0 2px}
 </style></head>
 <body>
 <div class="wrap">
@@ -216,6 +218,7 @@ const chatEl = document.getElementById('chat');
 const input = document.getElementById('input');
 const sendBtn = document.getElementById('sendBtn');
 
+// Voice (Samantha – EN only, not prepended to replies)
 let voiceOn = false, pick = null;
 function pickSamantha(){
   const all = window.speechSynthesis ? (speechSynthesis.getVoices()||[]) : [];
@@ -234,12 +237,22 @@ document.getElementById('voiceBtn').addEventListener('click',e=>{
   if (voiceOn) warm();
 });
 
-function add(type, txt){ const d=document.createElement('div'); d.className='msg '+(type==='me'?'me':'wd'); d.textContent=txt; chatEl.appendChild(d); chatEl.scrollTop=chatEl.scrollHeight; }
+function add(type, txt){
+  const d=document.createElement('div');
+  d.className='msg '+(type==='me'?'me':'wd');
+  d.textContent=txt;
+  chatEl.appendChild(d);
+  chatEl.scrollTop=chatEl.scrollHeight;
+}
 function welcome(){
-  add('wd','Welcome! I can help with Wi-Fi, check-in/out, water/AC, bathroom, gas, restaurants & drinks, shopping, what to visit, experiences, day trips, transport, services, emergency. (English)');
+  add('wd',"Hi, I’m Samantha — your virtual assistant.\nTap a button to get a quick answer.");
   const q=document.createElement('div'); q.className='quick';
   const items=${JSON.stringify(buttons)};
-  for(const it of items){ const b=document.createElement('button'); b.textContent=it; b.onclick=()=>{ input.value=it; send(); }; q.appendChild(b); }
+  for(const it of items){
+    const b=document.createElement('button'); b.textContent=it;
+    b.onclick=()=>{ input.value=it; send(); };
+    q.appendChild(b);
+  }
   chatEl.appendChild(q);
 }
 
@@ -250,7 +263,9 @@ async function send(){
     const r=await fetch('/api/message',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:text})});
     const data=await r.json(); const bot=data.text||'Sorry, something went wrong.';
     add('wd',bot); speak(bot);
-  }catch{ add('wd','Network error. Please try again.'); }
+  }catch{
+    add('wd','Network error. Please try again.');
+  }
 }
 sendBtn.addEventListener('click',send);
 input.addEventListener('keydown',e=>{ if(e.key==='Enter') send(); });
