@@ -11,7 +11,7 @@ app.use(express.json());
 // serve static files (logo, favicon) from repo root
 app.use(express.static('.'));
 
-// ---------- Apartment data (ARENULA 16) ----------
+// ---------- Apartment data (Arenula 16) ----------
 const apartment = {
   apartment_id: 'ARENULA16',
   name: 'Via Arenula 16',
@@ -59,9 +59,12 @@ const apartment = {
     'EU Emergency 112 • Police 113 • Ambulance 118 • Fire 115 • English doctor +39 06 488 2371 • 24h vet +39 06 660 681',
 
   // Eat/Drink/See
-  eat: 'Roscioli; Emma Pizzeria; Ditirambo; Osteria da Fortunata; Pianostrada; Forno Campo de’ Fiori; Gelateria del Teatro.',
-  drink: 'Caffè Camerino (Largo Arenula 30); Irish Pub (Largo Argentina); Modius Radisson Rooftop.',
-  shop: 'Via Arenula delis/bakeries/gelato; Piazza Costaguti fish market; Forno Boccione; Mercato Monti (weekends).',
+  eat:
+    'Roscioli; Emma Pizzeria; Ditirambo; Osteria da Fortunata; Pianostrada; Forno Campo de’ Fiori; Gelateria del Teatro.',
+  drink:
+    'Caffè Camerino (Largo Arenula 30); Irish Pub (Largo Argentina); Modius Radisson Rooftop.',
+  shop:
+    'Via Arenula delis/bakeries/gelato; Piazza Costaguti fish market; Forno Boccione; Mercato Monti (weekends).',
   visit:
     'Largo di Torre Argentina (temples & cat sanctuary); Portico d’Ottavia; Tiber Island; Piazza Farnese; hidden churches (Chiesa Nuova, S. Maria in Campitelli, S. Barbara dei Librari).',
   experiences:
@@ -81,7 +84,12 @@ const faqs = [
   { intent: 'wifi', utterances: ['wifi','wi-fi','internet','password','router'],
     answer_template: `Wi‑Fi: {wifi_note}\nNetwork: {wifi_ssid}. Password: {wifi_password}.` },
   { intent: 'check in', utterances: ['check in','arrival','access','intercom','code'],
-    answer_template: `Check‑in from {checkin_time}. Intercom code: {intercom_code}. Main door hours: {main_door_hours}. Concierge: {concierge}. Need help? Call {host_phone}.` },
+    answer_template:
+`Check‑in from {checkin_time}.
+Intercom code: {intercom_code}.
+Main door hours: {main_door_hours}.
+Concierge: {concierge}.
+Need help? Call {host_phone}.` },
   { intent: 'check out', utterances: ['check out','leave','departure'],
     answer_template: `{checkout_note}` },
   { intent: 'water', utterances: ['water','hot water','drinkable','tap'],
@@ -93,9 +101,19 @@ const faqs = [
   { intent: 'gas', utterances: ['gas','kitchen','cook','flame','burner'],
     answer_template: `Gas use: {gas_steps}` },
   { intent: 'building', utterances: ['building','elevator','door','hours','concierge'],
-    answer_template: `Intercom: {intercom_code}. Elevator: {elevator_note}. Main door: {main_door_hours}. Concierge: {concierge}.` },
+    answer_template:
+`Intercom: {intercom_code}.
+Elevator: {elevator_note}.
+Main door: {main_door_hours}.
+Concierge: {concierge}.` },
   { intent: 'services', utterances: ['pharmacy','hospital','atm','sim','laundry','luggage'],
-    answer_template: `Pharmacy: {pharmacy}\nHospital: {hospital}\nATMs: {atms}\nSIMs: {sims}\nLaundry: {laundry}\nLuggage: {luggage}` },
+    answer_template:
+`Pharmacy: {pharmacy}
+Hospital: {hospital}
+ATMs: {atms}
+SIMs: {sims}
+Laundry: {laundry}
+Luggage: {luggage}` },
   { intent: 'transport', utterances: ['transport','tram','bus','taxi','airport','train'],
     answer_template: `{transport}\nAirports: {airports}` },
   { intent: 'eat', utterances: ['eat','restaurant','dinner','lunch','food'],
@@ -122,7 +140,8 @@ const client = OPENAI_API_KEY ? new OpenAI({ apiKey: OPENAI_API_KEY }) : null;
 function norm(s){ return (s||'').toLowerCase().replace(/\s+/g,' ').trim(); }
 function detectIntent(msg){
   const t = norm(msg); let best=null, scoreBest=0;
-  for (const f of faqs){ let s=0; for (const u of f.utterances){ if (t.includes(norm(u))) s++; }
+  for (const f of faqs){
+    let s=0; for (const u of f.utterances){ if (t.includes(norm(u))) s++; }
     if (s>scoreBest){ best=f; scoreBest=s; }
   }
   return scoreBest>0 ? best : null;
@@ -150,7 +169,7 @@ app.post('/api/message', async (req,res)=>{
   const { message='' } = req.body || {};
   const m = detectIntent(message);
   let raw = m ? fill(m.answer_template, apartment)
-              : 'I did not find a direct answer. Try a button or use keywords (wifi, gas, transport, eat…).';
+              : 'I did not find a direct answer. Try a quick button or use keywords (wifi, transport, eat…).';
   const text = await polishEN(raw, message);
   res.json({ text, intent: m?.intent || null });
 });
@@ -208,7 +227,7 @@ input{flex:1;padding:12px;border:1px solid #cbd5e1;border-radius:10px;outline:no
   <main id="chat" aria-live="polite"></main>
 
   <footer>
-    <input id="input" placeholder="Type a message… e.g., wifi, gas, transport" autocomplete="off">
+    <input id="input" placeholder="Hi, I am Samantha, your virtual guide. Tap a button for a quick answer — or type here…" autocomplete="off">
     <button id="sendBtn">Send</button>
   </footer>
 </div>
@@ -217,7 +236,7 @@ const chatEl = document.getElementById('chat');
 const input = document.getElementById('input');
 const sendBtn = document.getElementById('sendBtn');
 
-// Voice (Samantha – EN only, no name announcement)
+// Voice (Samantha – EN only)
 let voiceOn = false, pick = null;
 function pickSamantha(){
   const all = window.speechSynthesis ? (speechSynthesis.getVoices()||[]) : [];
@@ -244,7 +263,8 @@ function add(type, txt){
   chatEl.scrollTop=chatEl.scrollHeight;
 }
 function welcome(){
-  add('wd',"I’m Samantha, your virtual guide. Tap a button for quick answers.");
+  // Messaggio iniziale minimale e chiaro
+  add('wd',"Hi, I am Samantha, your virtual guide. Tap a button to get a quick answer.");
   const q=document.createElement('div'); q.className='quick';
   const items=${JSON.stringify(buttons)};
   for(const it of items){
@@ -259,9 +279,15 @@ async function send(){
   const text=(input.value||'').trim(); if(!text) return;
   add('me',text); input.value='';
   try{
-    const r=await fetch('/api/message',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:text})});
-    const data=await r.json(); const bot=data.text||'Sorry, something went wrong.';
-    add('wd',bot); speak(bot);
+    const r=await fetch('/api/message',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({message:text})
+    });
+    const data=await r.json();
+    const bot=data.text||'Sorry, something went wrong.';
+    add('wd',bot);
+    speak(bot); // non pronuncia il nome
   }catch{
     add('wd','Network error. Please try again.');
   }
