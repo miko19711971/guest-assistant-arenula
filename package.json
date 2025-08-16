@@ -1,6 +1,7 @@
  {
-  "name": "guest-assistant-arenula",
+  "name": "guest-assistant-arenula-en",
   "version": "1.0.0",
+  "description": "Guest Assistant – Via Arenula 16 (EN + Samantha voice)",
   "type": "module",
   "scripts": {
     "start": "node index.js"
