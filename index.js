@@ -79,33 +79,41 @@ const apartment = {
   host_phone: '+39 335 5245756'
 };
 
-// ---------- FAQ (keyword → template) ----------
+ // ---------- FAQ (keyword → template) ----------
 const faqs = [
   { intent: 'wifi', utterances: ['wifi','wi-fi','internet','password','router'],
-    answer_template: `Wi‑Fi: {wifi_note}\nNetwork: {wifi_ssid}. Password: {wifi_password}.` },
+    answer_template: `Wi-Fi: {wifi_note}\nNetwork: {wifi_ssid}. Password: {wifi_password}.` },
+
   { intent: 'check in', utterances: ['check in','arrival','access','intercom','code'],
     answer_template:
-`Check‑in from {checkin_time}.
+`Check-in from {checkin_time}.
 Intercom code: {intercom_code}.
 Main door hours: {main_door_hours}.
 Concierge: {concierge}.
 Need help? Call {host_phone}.` },
+
   { intent: 'check out', utterances: ['check out','leave','departure'],
     answer_template: `{checkout_note}` },
+
   { intent: 'water', utterances: ['water','hot water','drinkable','tap'],
     answer_template: `{water_note}` },
+
   { intent: 'ac', utterances: ['ac','air conditioning','aircon','air'],
     answer_template: `{ac_note}` },
+
   { intent: 'bathroom', utterances: ['bathroom','hairdryer','soap','towels'],
     answer_template: `Bathroom: {bathroom_amenities}\nTowels: {towels_note}` },
+
   { intent: 'gas', utterances: ['gas','kitchen','cook','flame','burner'],
     answer_template: `Gas use: {gas_steps}` },
+
   { intent: 'building', utterances: ['building','elevator','door','hours','concierge'],
     answer_template:
 `Intercom: {intercom_code}.
 Elevator: {elevator_note}.
 Main door: {main_door_hours}.
 Concierge: {concierge}.` },
+
   { intent: 'services', utterances: ['pharmacy','hospital','atm','sim','laundry','luggage'],
     answer_template:
 `Pharmacy: {pharmacy}
@@ -114,20 +122,35 @@ ATMs: {atms}
 SIMs: {sims}
 Laundry: {laundry}
 Luggage: {luggage}` },
+
   { intent: 'transport', utterances: ['transport','tram','bus','taxi','airport','train'],
     answer_template: `{transport}\nAirports: {airports}` },
+
   { intent: 'eat', utterances: ['eat','restaurant','dinner','lunch','food'],
     answer_template: `{eat}` },
+
   { intent: 'drink', utterances: ['drink','bar','wine','cocktail','aperitivo'],
     answer_template: `{drink}` },
+
   { intent: 'shop', utterances: ['shop','market','shopping'],
     answer_template: `{shop}` },
-  { intent: 'visit', utterances: ['what to visit','see','sight','attraction','museum'],
-    answer_template: `{visit}` },
+
+  { intent: 'visit',
+    utterances: [
+      'visit', 'visiting', 'what to visit',
+      'see', 'sight', 'sights', 'attraction', 'attractions', 'museum', 'museums'
+    ],
+    answer_template: `{visit}`
+  },
+
   { intent: 'experience', utterances: ['experience','walk','tour','itinerary','sunset'],
     answer_template: `{experiences}` },
-  { intent: 'day trips', utterances: ['day trip','tivoli','ostia','castelli','excursion'],
-    answer_template: `{daytrips}` },
+
+  { intent: 'day trips',
+    utterances: ['day trips', 'day trip','tivoli','ostia','castelli','excursion','excursions'],
+    answer_template: `{daytrips}`
+  },
+
   { intent: 'emergency', utterances: ['emergency','police','ambulance','fire','doctor','vet'],
     answer_template: `{emergency}` }
 ];
