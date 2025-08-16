@@ -1,442 +1,296 @@
-// index.js — Guest Assistant (multilingual + auto voice)
-
+// Guest Assistant — multilingual (EN/ES/FR/DE/IT)
 import express from 'express';
 import cors from 'cors';
-import OpenAI from 'openai';
 
 const app = express();
 app.use(cors());
 app.use(express.json());
-app.use(express.static('.')); // serve logo ecc.
+app.use(express.static('.')); // per eventuali asset (logo, ecc.)
 
-// ---------- Lingue supportate ----------
-const LANGS = {
-  en: {label: 'English',  ttsLang: 'en-US', voiceHint: 'Samantha'},
-  es: {label: 'Español',  ttsLang: 'es-ES', voiceHint: 'Monica'},
-  fr: {label: 'Français', ttsLang: 'fr-FR', voiceHint: 'Amelie'},
-  de: {label: 'Deutsch',  ttsLang: 'de-DE', voiceHint: 'Anna'},
-  it: {label: 'Italiano', ttsLang: 'it-IT', voiceHint: 'Alice'}
-};
-const DEFAULT_LANG = 'en';
-
-// ---------- Dati appartamento (esempio Arenula 16) ----------
-const apartment = {
-  apartment_id: 'ARENULA16',
-  name: 'Via Arenula 16',
-  address: 'Via Arenula 16, Rome, Italy',
-  checkin_time: '15:00',
-  checkout_time: '11:00',
-
-  // Wi-Fi
-  wifi_note: 'Router on the desk by the window. Turn it to see SSID & password.',
-  wifi_ssid: 'See router label',
-  wifi_password: 'See router label',
-
-  // Acqua / Bagno
-  water_note: 'Tap water is safe to drink. Hot water is always available.',
-  ac_note: 'Please switch off the air conditioning when you go out.',
-  bathroom_amenities: 'Toilet paper, hand soap, bath mat, hairdryer.',
-  towels_note: 'Per guest: 1 large + 1 medium towel. Bed is prepared on arrival.',
-
-  // Gas
-  gas_steps:
-    'Gas valve: horizontal=open, vertical=closed. Choose burner. Light a match/lighter. Turn & press the black knob until the flame is steady, then release.',
-
-  // Building
-  intercom_code: 'C8',
-  elevator_note: 'Elevator for owners only — please do not use.',
-  main_door_hours: '08:00–13:00 and 15:30–18:00',
-  concierge: 'Paolo',
-
-  // Servizi vicini
-  pharmacy: 'Farmacia Arenula, Via Arenula 19–21 — +39 06 686 8815',
-  hospital: 'Fatebenefratelli Hospital, Tiber Island 1',
-  atms: 'Unicredit (Largo Arenula 1), BNL (Via Arenula 41), Intesa (Via Arenula 27)',
-  sims: 'Vodafone (Corso Vittorio Emanuele II, 209), TIM (Piazza Venezia, 2), Iliad (Via del Corso, 282)',
-  laundry: 'Self-service laundry: Via Arenula 47',
-  luggage: 'Radical Storage at Largo di Torre Argentina (5 min)',
-
-  // Trasporti
-  transport:
-    'Tram 8 (Arenula/Cairoli) → Trastevere or Piazza Venezia. Bus 40/64 → Termini & Vatican. Taxi: +39 06 3570 or FreeNow app.',
-  airports:
-    'Fiumicino: Tram 8 → Trastevere → FL1 train (~45 min). Ciampino: Terravision bus or taxi. Private transfer: Welcome Pickups.',
-
-  // Emergenze
-  emergency:
-    'EU Emergency 112 • Police 113 • Ambulance 118 • Fire 115 • English doctor +39 06 488 2371 • 24h vet +39 06 660 681',
-
-  // Eat/Drink/See
-  eat: 'Roscioli; Emma Pizzeria; Ditirambo; Osteria da Fortunata; Pianostrada; Forno Campo de’ Fiori; Gelateria del Teatro.',
-  drink: 'Caffè Camerino (Largo Arenula 30); Irish Pub (Largo Argentina); Modius Radisson Rooftop.',
-  shop: 'Via Arenula delis/bakeries/gelato; Piazza Costaguti fish market; Forno Boccione; Mercato Monti (weekends).',
-  visit:
-    'Largo di Torre Argentina (temples & cat sanctuary); Portico d’Ottavia; Tiber Island; Piazza Farnese; hidden churches (Chiesa Nuova, S. Maria in Campitelli, S. Barbara dei Librari).',
-  experiences:
-    'Evening walk: Largo Argentina → Ghetto → Tiber Island → Teatro di Marcello; aperitivo at Camerino or Modius; pastries at Forno Boccione; sunset on Lungotevere.',
-  daytrips:
-    'Ostia Antica (~40 min); Tivoli (Villa d’Este & Hadrian’s Villa ~1h); Castelli Romani (villages & wine).',
-
-  // Check-out
-  checkout_note:
-    'Before leaving: turn off lights/AC, close windows, leave keys on the table, gently close the door.',
-
-  host_phone: '+39 335 5245756'
-};
-
-// ---------- Testi UI per ciascuna lingua ----------
-const UI = {
+// ====== CONTENUTI MULTILINGUA ======
+const T = {
   en: {
-    welcome: 'Hi, I’m Samantha, your virtual guide. Tap a button to get a quick answer.',
-    inputPH: 'Type a message… e.g., wifi, gas, transport',
-    buttons: ['wifi','check in','check out','water','AC','bathroom','gas',
-      'eat','drink','shop','visit','experience','day trips','transport','services','emergency']
+    langName: 'English',
+    siteTitle: 'niceflatinrome.com',
+    aptLabel: 'Apartment',
+    voiceOn: 'Voice: On',
+    voiceOff: 'Voice: Off',
+    hi: "Hi, I am Samantha, your virtual assistant. Tap a button to get a quick answer.",
+    categories: {
+      wifi: 'wifi', checkin: 'check in', checkout: 'check out', water: 'water',
+      bathroom: 'bathroom', gas: 'gas', eat: 'eat', drink: 'drink', shop: 'shop',
+      visit: 'visit', experience: 'experience', daytrips: 'day trips',
+      transport: 'transport', services: 'services', emergency: 'emergency'
+    },
+    answers: {
+      wifi: "Wi-Fi: you'll find the router in the living room. The SSID and password are on the label on the back.",
+      checkin: "Check-in from 15:00. If you need help call/WhatsApp +39 335 524 5756.",
+      checkout: "Before leaving: turn off lights, close windows, leave the keys on the table and gently close the door.",
+      water: "Tap water is safe to drink. Hot water is always on.",
+      bathroom: "Bathroom: toilet paper, hand soap and a hairdryer are provided.",
+      gas: "Cooking: press & turn the knob, hold a few seconds until the flame is steady.",
+      eat: "Nearby food tips available in your welcome booklet.",
+      drink: "Great cocktails around the area; ask if you need a personal tip.",
+      shop: "Groceries and bakeries are within walking distance.",
+      visit: "Main sights are walkable; check the booklet for a suggested route.",
+      experience: "Romantic stroll at sunset and gelato stop — see suggestions in the guide.",
+      daytrips: "Ostia Antica, Tivoli and Castelli Romani are great day trips.",
+      transport: "Tram, buses and taxis available; FreeNow app works well.",
+      services: "Pharmacy, hospital and ATMs are listed in the info section.",
+      emergency: "Emergency numbers: 112 (EU emergency). For assistance call +39 335 524 5756."
+    }
   },
+
   es: {
-    welcome: 'Hola, soy Samantha, tu guía virtual. Toca un botón para obtener una respuesta rápida.',
-    inputPH: 'Escribe un mensaje… p. ej., wifi, gas, transporte',
-    buttons: ['wifi','check in','check out','agua','AC','baño','gas',
-      'comer','beber','comprar','visitar','experiencia','excursiones','transporte','servicios','emergencia']
+    langName: 'Español',
+    siteTitle: 'niceflatinrome.com',
+    aptLabel: 'Apartamento',
+    voiceOn: 'Voz: Activada',
+    voiceOff: 'Voz: Desactivada',
+    hi: "Hola, soy Samantha, tu asistente virtual. Toca un botón para una respuesta rápida.",
+    categories: {
+      wifi: 'wifi', checkin: 'check in', checkout: 'check out', water: 'agua',
+      bathroom: 'baño', gas: 'gas', eat: 'comer', drink: 'beber', shop: 'compras',
+      visit: 'visitar', experience: 'experiencia', daytrips: 'excursiones',
+      transport: 'transporte', services: 'servicios', emergency: 'emergencia'
+    },
+    answers: {
+      wifi: "Wi-Fi: el router está en el salón. SSID y contraseña en la etiqueta trasera.",
+      checkin: "Check-in desde las 15:00. Si necesitas ayuda llama/WhatsApp +39 335 524 5756.",
+      checkout: "Antes de salir: apaga las luces, cierra las ventanas y deja las llaves en la mesa.",
+      water: "El agua del grifo es potable. El agua caliente está siempre encendida.",
+      bathroom: "Baño: papel higiénico, jabón de manos y secador disponibles.",
+      gas: "Cocina: presiona y gira la perilla; mantén unos segundos hasta que la llama sea estable.",
+      eat: "Recomendaciones cercanas en el folleto de bienvenida.",
+      drink: "Buenos cócteles en la zona; pide consejo si lo deseas.",
+      shop: "Supermercados y panaderías a pocos minutos caminando.",
+      visit: "Atracciones principales a pie; ruta sugerida en la guía.",
+      experience: "Paseo romántico al atardecer con helado — ver guía.",
+      daytrips: "Ostia Antica, Tivoli y Castelli Romani son buenas excursiones.",
+      transport: "Tranvía, autobuses y taxis; la app FreeNow funciona bien.",
+      services: "Farmacia, hospital y cajeros en la sección de info.",
+      emergency: "Emergencias: 112. Para ayuda llama +39 335 524 5756."
+    }
   },
+
   fr: {
-    welcome: 'Bonjour, je suis Samantha, votre guide virtuel. Touchez un bouton pour une réponse rapide.',
-    inputPH: 'Écrivez un message… ex. wifi, gaz, transport',
-    buttons: ['wifi','check in','check out','eau','AC','salle de bain','gaz',
-      'manger','boire','shopping','visiter','expérience','excursions','transport','services','urgence']
+    langName: 'Français',
+    siteTitle: 'niceflatinrome.com',
+    aptLabel: 'Appartement',
+    voiceOn: 'Voix : Activée',
+    voiceOff: 'Voix : Désactivée',
+    hi: "Bonjour, je suis Samantha, votre assistante virtuelle. Touchez un bouton pour une réponse rapide.",
+    categories: {
+      wifi: 'wifi', checkin: 'check in', checkout: 'check out', water: 'eau',
+      bathroom: 'salle de bain', gas: 'gaz', eat: 'manger', drink: 'boire', shop: 'shopping',
+      visit: 'visiter', experience: 'expérience', daytrips: 'excursions',
+      transport: 'transport', services: 'services', emergency: 'urgence'
+    },
+    answers: {
+      wifi: "Wi-Fi : routeur au salon. SSID et mot de passe sur l’étiquette arrière.",
+      checkin: "Arrivée dès 15h00. Besoin d’aide ? Appelez/WhatsApp +39 335 524 5756.",
+      checkout: "Avant de partir : éteignez les lumières, fermez les fenêtres, laissez les clés sur la table.",
+      water: "L’eau du robinet est potable. L’eau chaude est toujours disponible.",
+      bathroom: "Salle de bain : papier, savon pour les mains, sèche-cheveux fournis.",
+      gas: "Cuisine : appuyez et tournez, maintenez quelques secondes jusqu’à flamme stable.",
+      eat: "Conseils à proximité dans le livret d’accueil.",
+      drink: "Bons cocktails dans le quartier ; demandez un conseil si besoin.",
+      shop: "Épiceries et boulangeries accessibles à pied.",
+      visit: "Sites principaux à pied ; itinéraire suggéré dans la guide.",
+      experience: "Balade au coucher du soleil avec glace — voir guide.",
+      daytrips: "Ostia Antica, Tivoli, Castelli Romani : belles excursions.",
+      transport: "Tram, bus et taxis ; l’appli FreeNow fonctionne bien.",
+      services: "Pharmacie, hôpital et DAB listés dans les infos.",
+      emergency: "Urgences : 112. Pour aide, appelez +39 335 524 5756."
+    }
   },
+
   de: {
-    welcome: 'Hallo, ich bin Samantha, Ihre virtuelle Begleiterin. Tippen Sie auf einen Button für eine schnelle Antwort.',
-    inputPH: 'Nachricht eingeben… z. B. WLAN, Gas, Verkehr',
-    buttons: ['wifi','check in','check out','wasser','AC','bad','gas',
-      'essen','trinken','einkauf','besuchen','erlebnis','tagesausflüge','transport','services','notfall']
+    langName: 'Deutsch',
+    siteTitle: 'niceflatinrome.com',
+    aptLabel: 'Apartment',
+    voiceOn: 'Stimme: An',
+    voiceOff: 'Stimme: Aus',
+    hi: "Hallo, ich bin Samantha, deine virtuelle Assistentin. Tippe auf eine Schaltfläche für eine schnelle Antwort.",
+    categories: {
+      wifi: 'WLAN', checkin: 'Check-in', checkout: 'Check-out', water: 'Wasser',
+      bathroom: 'Bad', gas: 'Gas', eat: 'Essen', drink: 'Trinken', shop: 'Shoppen',
+      visit: 'Sehenswürdigkeiten', experience: 'Erlebnis', daytrips: 'Tagesausflüge',
+      transport: 'Verkehr', services: 'Service', emergency: 'Notfall'
+    },
+    answers: {
+      wifi: "WLAN: Router im Wohnzimmer. SSID & Passwort stehen hinten auf dem Etikett.",
+      checkin: "Check-in ab 15:00. Hilfe? Anrufen/WhatsApp +39 335 524 5756.",
+      checkout: "Vor Abreise: Lichter aus, Fenster schließen, Schlüssel auf den Tisch legen.",
+      water: "Leitungswasser ist trinkbar. Warmwasser ist ständig an.",
+      bathroom: "Bad: Toilettenpapier, Handseife, Föhn vorhanden.",
+      gas: "Kochen: drücken und drehen, einige Sekunden halten bis die Flamme stabil ist.",
+      eat: "Tipps in der Willkommensmappe.",
+      drink: "Gute Bars in der Nähe; gern nach Tipp fragen.",
+      shop: "Lebensmittel & Bäckereien fußläufig erreichbar.",
+      visit: "Wichtigste Sehenswürdigkeiten zu Fuß; Route in der Mappe.",
+      experience: "Abendspaziergang bei Sonnenuntergang mit Eis — siehe Guide.",
+      daytrips: "Ostia Antica, Tivoli, Castelli Romani sind tolle Ausflüge.",
+      transport: "Tram, Busse, Taxis; FreeNow-App funktioniert gut.",
+      services: "Apotheke, Krankenhaus, Geldautomaten siehe Infos.",
+      emergency: "Notruf: 112. Hilfe: +39 335 524 5756."
+    }
   },
+
   it: {
-    welcome: 'Ciao, sono Samantha, la tua guida virtuale. Tocca un pulsante per una risposta rapida.',
-    inputPH: 'Scrivi un messaggio… es. wifi, gas, trasporti',
-    buttons: ['wifi','check in','check out','acqua','AC','bagno','gas',
-      'mangiare','bere','shopping','visitare','esperienza','gite','trasporti','servizi','emergenza']
+    langName: 'Italiano',
+    siteTitle: 'niceflatinrome.com',
+    aptLabel: 'Appartamento',
+    voiceOn: 'Voce: Attiva',
+    voiceOff: 'Voce: Spenta',
+    hi: "Ciao, sono Samantha, la tua assistente virtuale. Tocca un pulsante per una risposta rapida.",
+    categories: {
+      wifi: 'wifi', checkin: 'check in', checkout: 'check out', water: 'acqua',
+      bathroom: 'bagno', gas: 'gas', eat: 'mangiare', drink: 'bere', shop: 'shopping',
+      visit: 'visitare', experience: 'esperienza', daytrips: 'gite',
+      transport: 'trasporti', services: 'servizi', emergency: 'emergenza'
+    },
+    answers: {
+      wifi: "Wi-Fi: router in salotto. SSID e password sull’etichetta posteriore.",
+      checkin: "Check-in dalle 15:00. Se serve aiuto chiama/WhatsApp +39 335 524 5756.",
+      checkout: "Prima di partire: spegni le luci, chiudi le finestre, lascia le chiavi sul tavolo.",
+      water: "L’acqua del rubinetto è potabile. L’acqua calda è sempre attiva.",
+      bathroom: "Bagno: carta igienica, sapone mani, asciugacapelli.",
+      gas: "Cucina: premi e gira la manopola, tieni premuto qualche secondo.",
+      eat: "Consigli vicini nel welcome booklet.",
+      drink: "Ottimi cocktail in zona; chiedi pure un consiglio.",
+      shop: "Alimentari e panifici a pochi minuti a piedi.",
+      visit: "Attrazioni principali a piedi; itinerario nella guida.",
+      experience: "Passeggiata al tramonto con gelato — vedi guida.",
+      daytrips: "Ostia Antica, Tivoli, Castelli Romani sono ottime gite.",
+      transport: "Tram, bus e taxi; l’app FreeNow funziona bene.",
+      services: "Farmacia, ospedale e bancomat nelle info.",
+      emergency: "Emergenze: 112. Assistenza: +39 335 524 5756."
+    }
   }
 };
 
-// ---------- FAQ multilingua (stesse chiavi, testi per lingua) ----------
-const faqs = [
-  { key:'wifi',
-    utter: ['wifi','wi-fi','internet','password','router'],
-    ans: {
-      en: `Wi-Fi: ${apartment.wifi_note}\nNetwork: ${apartment.wifi_ssid}. Password: ${apartment.wifi_password}.`,
-      es: `Wi-Fi: ${apartment.wifi_note}\nRed: ${apartment.wifi_ssid}. Clave: ${apartment.wifi_password}.`,
-      fr: `Wi-Fi : ${apartment.wifi_note}\nRéseau : ${apartment.wifi_ssid}. Mot de passe : ${apartment.wifi_password}.`,
-      de: `WLAN: ${apartment.wifi_note}\nNetz: ${apartment.wifi_ssid}. Passwort: ${apartment.wifi_password}.`,
-      it: `Wi-Fi: ${apartment.wifi_note}\nRete: ${apartment.wifi_ssid}. Password: ${apartment.wifi_password}.`
-    }
-  },
-  { key:'check in',
-    utter: ['check in','arrival','access','intercom','code','arribo','arrivée','ankunft','ingresso','citofono'],
-    ans: {
-      en: `Check-in from ${apartment.checkin_time}. Intercom code: ${apartment.intercom_code}. Main door hours: ${apartment.main_door_hours}. Concierge: ${apartment.concierge}. Need help? Call ${apartment.host_phone}.`,
-      es: `Check-in desde las ${apartment.checkin_time}. Portero: ${apartment.intercom_code}. Puerta principal: ${apartment.main_door_hours}. Conserje: ${apartment.concierge}. ¿Ayuda? ${apartment.host_phone}.`,
-      fr: `Arrivée à partir de ${apartment.checkin_time}. Interphone : ${apartment.intercom_code}. Porte : ${apartment.main_door_hours}. Concierge : ${apartment.concierge}. Besoin d’aide ? ${apartment.host_phone}.`,
-      de: `Check-in ab ${apartment.checkin_time}. Klingel: ${apartment.intercom_code}. Haustür: ${apartment.main_door_hours}. Concierge: ${apartment.concierge}. Hilfe? ${apartment.host_phone}.`,
-      it: `Check-in dalle ${apartment.checkin_time}. Citofono: ${apartment.intercom_code}. Portone: ${apartment.main_door_hours}. Portineria: ${apartment.concierge}. Aiuto? ${apartment.host_phone}.`
-    }
-  },
-  { key:'check out',
-    utter: ['check out','leave','departure','salida','départ','abreise','uscita'],
-    ans: {
-      en: apartment.checkout_note,
-      es: 'Antes de salir: apaga luci/AC, chiudi le finestre, lascia le chiavi sul tavolo, chiudi la porta con delicatezza.',
-      fr: 'Avant de partir : éteignez lumières/clim, fermez les fenêtres, laissez les clés sur la table, fermez la porte doucement.',
-      de: 'Vor dem Verlassen: Licht/Klima aus, Fenster schließen, Schlüssel auf dem Tisch lassen, Tür sanft schließen.',
-      it: 'Prima di uscire: spegni luci/AC, chiudi le finestre, lascia le chiavi sul tavolo, chiudi piano la porta.'
-    }
-  },
-  { key:'water',
-    utter: ['water','hot water','drinkable','tap','agua','eau','wasser','acqua'],
-    ans: {
-      en: apartment.water_note,
-      es: 'El agua del grifo es potable. El agua caliente está siempre disponible.',
-      fr: 'L’eau du robinet est potable. L’eau chaude est toujours disponible.',
-      de: 'Leitungswasser ist trinkbar. Warmwasser ist immer verfügbar.',
-      it: 'L’acqua del rubinetto è potabile. L’acqua calda è sempre disponibile.'
-    }
-  },
-  { key:'AC',
-    utter: ['ac','air conditioning','aircon','aria','clima','aire','clim'],
-    ans: {
-      en: apartment.ac_note,
-      es: 'Por favor, apaga el aire acondicionado cuando salgas.',
-      fr: 'Merci d’éteindre la climatisation en sortant.',
-      de: 'Bitte Klimaanlage ausschalten, wenn Sie gehen.',
-      it: 'Per favore spegni l’aria condizionata quando esci.'
-    }
-  },
-  { key:'bathroom',
-    utter: ['bathroom','hairdryer','soap','towels','baño','salle de bain','bad','bagno'],
-    ans: {
-      en: `Bathroom: ${apartment.bathroom_amenities}\nTowels: ${apartment.towels_note}`,
-      es: `Baño: ${apartment.bathroom_amenities}\nToallas: ${apartment.towels_note}`,
-      fr: `Salle de bain : ${apartment.bathroom_amenities}\nServiettes : ${apartment.towels_note}`,
-      de: `Bad: ${apartment.bathroom_amenities}\nHandtücher: ${apartment.towels_note}`,
-      it: `Bagno: ${apartment.bathroom_amenities}\nAsciugamani: ${apartment.towels_note}`
-    }
-  },
-  { key:'gas',
-    utter: ['gas','kitchen','cook','flame','burner','cocina','gaz','küche','cucina'],
-    ans: {
-      en: `Gas use: ${apartment.gas_steps}`,
-      es: `Uso del gas: ${apartment.gas_steps}`,
-      fr: `Gaz : ${apartment.gas_steps}`,
-      de: `Gasherd: ${apartment.gas_steps}`,
-      it: `Uso gas: ${apartment.gas_steps}`
-    }
-  },
-  { key:'services',
-    utter: ['pharmacy','hospital','atm','sim','laundry','luggage','servizi','servicios','services','dienstleistungen'],
-    ans: {
-      en: `Pharmacy: ${apartment.pharmacy}\nHospital: ${apartment.hospital}\nATMs: ${apartment.atms}\nSIMs: ${apartment.sims}\nLaundry: ${apartment.laundry}\nLuggage: ${apartment.luggage}`,
-      es: `Farmacia: ${apartment.pharmacy}\nHospital: ${apartment.hospital}\nCajeros: ${apartment.atms}\nSIM: ${apartment.sims}\nLavandería: ${apartment.laundry}\nEquipaje: ${apartment.luggage}`,
-      fr: `Pharmacie : ${apartment.pharmacy}\nHôpital : ${apartment.hospital}\nDAB : ${apartment.atms}\nSIM : ${apartment.sims}\nLaverie : ${apartment.laundry}\nBagages : ${apartment.luggage}`,
-      de: `Apotheke: ${apartment.pharmacy}\nKrankenhaus: ${apartment.hospital}\nGeldautomaten: ${apartment.atms}\nSIMs: ${apartment.sims}\nWäscherei: ${apartment.laundry}\nGepäck: ${apartment.luggage}`,
-      it: `Farmacia: ${apartment.pharmacy}\nOspedale: ${apartment.hospital}\nBancomat: ${apartment.atms}\nSIM: ${apartment.sims}\nLavanderia: ${apartment.laundry}\nDeposito bagagli: ${apartment.luggage}`
-    }
-  },
-  { key:'transport',
-    utter: ['transport','tram','bus','taxi','airport','train','transporte','transport','verkehr','trasporti'],
-    ans: {
-      en: `${apartment.transport}\nAirports: ${apartment.airports}`,
-      es: `${apartment.transport}\nAeropuertos: ${apartment.airports}`,
-      fr: `${apartment.transport}\nAéroports : ${apartment.airports}`,
-      de: `${apartment.transport}\nFlughäfen: ${apartment.airports}`,
-      it: `${apartment.transport}\nAeroporti: ${apartment.airports}`
-    }
-  },
-  { key:'eat', utter: ['eat','restaurant','dinner','lunch','comer','manger','essen','mangiare'],
-    ans: { en: apartment.eat, es: apartment.eat, fr: apartment.eat, de: apartment.eat, it: apartment.eat }
-  },
-  { key:'drink', utter: ['drink','bar','wine','cocktail','beber','boire','trinken','bere'],
-    ans: { en: apartment.drink, es: apartment.drink, fr: apartment.drink, de: apartment.drink, it: apartment.drink }
-  },
-  { key:'shop', utter: ['shop','market','shopping','comprar','shopping','einkauf','shopping'],
-    ans: { en: apartment.shop, es: apartment.shop, fr: apartment.shop, de: apartment.shop, it: apartment.shop }
-  },
-  { key:'visit', utter: ['what to visit','see','sight','attraction','museum','visitar','visiter','besuchen','visitare'],
-    ans: { en: apartment.visit, es: apartment.visit, fr: apartment.visit, de: apartment.visit, it: apartment.visit }
-  },
-  { key:'experience', utter: ['experience','walk','tour','itinerary','sunset','romantic','experiencia','expérience','erlebnis','esperienza'],
-    ans: { en: apartment.experiences, es: apartment.experiences, fr: apartment.experiences, de: apartment.experiences, it: apartment.experiences }
-  },
-  { key:'day trips', utter: ['day trip','tivoli','ostia','castelli','excursion','excursión','excursion','tagesausflug','gite'],
-    ans: { en: apartment.daytrips, es: apartment.daytrips, fr: apartment.daytrips, de: apartment.daytrips, it: apartment.daytrips }
-  },
-  { key:'emergency', utter: ['emergency','police','ambulance','fire','doctor','vet','emergencia','urgence','notfall','emergenza'],
-    ans: { en: apartment.emergency, es: apartment.emergency, fr: apartment.emergency, de: apartment.emergency, it: apartment.emergency }
-  }
-];
+const FALLBACK = 'en';
 
-// ---------- OpenAI (risposta nella lingua scelta) ----------
-const OPENAI_API_KEY = process.env.OPENAI_API_KEY || '';
-const OPENAI_MODEL = process.env.OPENAI_MODEL || 'gpt-4o-mini';
-const client = OPENAI_API_KEY ? new OpenAI({ apiKey: OPENAI_API_KEY }) : null;
+// ====== PAGINA ======
+app.get('/', (req, res) => {
+  const lang = ((req.query.lang || '').toLowerCase()) in T ? req.query.lang.toLowerCase() : FALLBACK;
+  const L = T[lang];
 
-function norm(s){ return (s||'').toLowerCase().replace(/\s+/g,' ').trim(); }
-function detect(message){
-  const t = norm(message); let best=null, score=0;
-  for (const f of faqs){
-    let s=0; for (const u of f.utter){ if (t.includes(norm(u))) s++; }
-    if (s>score){ best=f; score=s; }
-  }
-  return best;
-}
-async function polish(raw, userMsg, lang){
-  if (!client) return raw;
-  const langName = LANGS[lang]?.label || LANGS[DEFAULT_LANG].label;
-  const sys = `You are a concise apartment assistant. ALWAYS answer in ${langName}. Keep facts as given; do not invent. Max ~120 words.`;
-  try{
-    const r = await client.responses.create({
-      model: OPENAI_MODEL,
-      input: [
-        {role:'system', content: sys},
-        {role:'developer', content: `Apartment data: ${JSON.stringify(apartment)}`},
-        {role:'user', content: `Guest asked: ${userMsg}\nDraft answer:\n${raw}`}
-      ]
-    });
-    return r.output_text || raw;
-  }catch{ return raw; }
-}
+  const langLinks = Object.entries(T).map(([code, obj]) => {
+    const active = code === lang ? 'style="font-weight:700;text-decoration:underline;font-size:14px;"' : 'style="font-size:14px;"';
+    return `<a ${active} href="?lang=${code}">${obj.langName}</a>`;
+  }).join(' · ');
 
-// ---------- API ----------
-app.post('/api/message', async (req,res)=>{
-  const { message='', lang=DEFAULT_LANG } = req.body || {};
-  const m = detect(message);
-  let raw;
-  if (m) {
-    raw = m.ans[lang] || m.ans[DEFAULT_LANG];
-  } else {
-    // fallback generico localizzato
-    const fallback = {
-      en: 'I did not find a direct answer. Use the quick buttons (wifi, gas, transport…) or type a keyword.',
-      es: 'No encontré una respuesta directa. Usa los botones rápidos (wifi, gas, transporte…) o escribe una palabra clave.',
-      fr: 'Je ne trouve pas de réponse directe. Utilisez les boutons rapides (wifi, gaz, transport…) ou tapez un mot-clé.',
-      de: 'Keine direkte Antwort gefunden. Nutzen Sie die Schnellbuttons (WLAN, Gas, Transport…) oder geben Sie ein Stichwort ein.',
-      it: 'Non ho trovato una risposta diretta. Usa i pulsanti rapidi (wifi, gas, trasporti…) o scrivi una parola chiave.'
-    }[lang] || '…';
-    raw = fallback;
-  }
-  const text = await polish(raw, message, lang);
-  res.json({ text, intent: m?.key || null });
-});
+  // bottoni
+  const btns = Object.entries(L.categories).map(([key, label]) => {
+    return `<button class="chip" data-key="${key}">${label}</button>`;
+  }).join('');
 
-// ---------- UI ----------
-app.get('/', (_req,res)=>{
-  const html = `<!doctype html><html lang="en"><head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Guest Help — ${apartment.name}</title>
-<link rel="icon" href="logo-niceflatinrome.jpg">
+  // HTML
+  const html = `<!doctype html>
+<html lang="${lang}">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>${L.siteTitle} — Assistant</title>
 <style>
-*{box-sizing:border-box} body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:#f6f6f6}
-.wrap{max-width:760px;margin:0 auto;min-height:100vh;display:flex;flex-direction:column}
-header{position:sticky;top:0;background:#fff;border-bottom:1px solid #e0e0e0;padding:10px 14px}
-.h-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
-.h-left{display:flex;align-items:center;gap:10px}
-.brand{font-weight:700;color:#a33}
-.apt{margin-left:auto;opacity:.75}
-img.logo{height:36px;width:auto;display:block}
-.controls{display:flex;gap:8px;margin-top:8px;align-items:center;flex-wrap:wrap}
-#langbar{display:flex;gap:10px;font-weight:700}
-#langbar button{border:1px solid #ddd;background:#fff;border-radius:10px;padding:6px 10px;cursor:pointer}
-#langbar button.active{background:#2b2118;color:#fff;border-color:#2b2118}
-#voiceBtn{padding:6px 10px;border:1px solid #ddd;background:#fff;border-radius:10px;cursor:pointer}
-#voiceBtn[aria-pressed="true"]{background:#2b2118;color:#fff;border-color:#2b2118}
-main{flex:1;padding:12px}
-.msg{max-width:85%;line-height:1.35;border-radius:12px;padding:10px 12px;margin:8px 0;white-space:pre-wrap}
-.msg.wd{background:#fff;border:1px solid #e0e0e0}
-.msg.me{background:#e8f0fe;border:1px solid #c5d5ff;margin-left:auto}
-.quick{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}
-.quick button{border:1px solid #d6c5b8;background:#fff;color:#333;padding:6px 10px;border-radius:12px;cursor:pointer}
-.quick button:active{transform:translateY(1px)}
-footer{position:sticky;bottom:0;background:#fff;display:flex;gap:8px;padding:10px;border-top:1px solid #e0e0e0}
-input{flex:1;padding:12px;border:1px solid #cbd5e1;border-radius:10px;outline:none}
-#sendBtn{padding:12px 14px;border:1px solid #2b2118;background:#2b2118;color:#fff;border-radius:10px;cursor:pointer}
-</style></head>
+  :root{--brand:#7a1e12;--ink:#1f2937;--muted:#6b7280;--bg:#fafafa;--card:#fff;--line:#e5e7eb}
+  *{box-sizing:border-box}
+  body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:var(--bg);color:var(--ink)}
+  .wrap{max-width:920px;margin:0 auto;padding:14px}
+  header{display:flex;align-items:center;gap:12px}
+  .logo{font-weight:800;color:#b91c1c}
+  .apt{margin-left:auto;color:var(--muted)}
+  .voice{border:1px solid var(--line);border-radius:10px;background:#fff;padding:8px 10px;cursor:pointer}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-top:12px}
+  .chips{display:flex;flex-wrap:wrap;gap:10px;margin-top:8px}
+  .chip{border:1px solid var(--line);background:#fff;border-radius:22px;padding:8px 12px;cursor:pointer}
+  .lang{margin-top:8px;color:var(--muted)}
+  .msg{margin-top:14px;line-height:1.5}
+</style>
+</head>
 <body>
 <div class="wrap">
   <header>
-    <div class="h-row">
-      <div class="h-left">
-        <img class="logo" src="logo-niceflatinrome.jpg" alt="NiceFlatInRome">
-        <div class="brand">niceflatinrome.com</div>
-      </div>
-      <div class="apt">Apartment: ${apartment.apartment_id}</div>
-    </div>
-    <div class="controls">
-      <div id="langbar" aria-label="Language"></div>
-      <button id="voiceBtn" aria-pressed="false" title="Toggle voice">🔇 Voice: Off</button>
-    </div>
+    <div class="logo">${L.siteTitle}</div>
+    <div class="apt">${L.aptLabel}: ARENULA</div>
+    <button id="voiceBtn" class="voice" data-on="0">${L.voiceOff}</button>
   </header>
 
-  <main id="chat" aria-live="polite"></main>
+  <div class="lang">Language / Idioma / Langue / Sprache / Lingua: ${langLinks}</div>
 
-  <footer>
-    <input id="input" placeholder="" autocomplete="off">
-    <button id="sendBtn">Send</button>
-  </footer>
+  <div class="card">
+    <div id="hi">${L.hi}</div>
+    <div class="chips">${btns}</div>
+    <div id="answer" class="msg"></div>
+  </div>
 </div>
 
 <script>
-// ---- Stato lingua ----
-const LANGS = ${JSON.stringify(LANGS)};
-const UI = ${JSON.stringify(UI)};
-let lang = localStorage.getItem('lang') || '${DEFAULT_LANG}';
+  const LANG = ${JSON.stringify(Object.keys(T))}.includes("${lang}") ? "${lang}" : "${FALLBACK}";
+  const DATA = ${JSON.stringify(T)};
 
-// ---- Chat UI ----
-const chatEl = document.getElementById('chat');
-const input = document.getElementById('input');
-const sendBtn = document.getElementById('sendBtn');
-const langbar = document.getElementById('langbar');
+  // Voce
+  let voiceOn = false;
+  let selectedVoice = null;
 
-function setLangBar(){
-  langbar.innerHTML = '';
-  for(const code of Object.keys(LANGS)){
-    const b=document.createElement('button');
-    b.textContent = LANGS[code].label;
-    if(code===lang) b.classList.add('active');
-    b.onclick = ()=>{ lang = code; localStorage.setItem('lang',lang); refreshUI(); };
-    langbar.appendChild(b);
+  function pickVoiceFor(lang){
+    const voices = window.speechSynthesis.getVoices();
+    if(!voices || voices.length===0) return null;
+    // prova match perfetto lang-*
+    let v = voices.find(v => v.lang && v.lang.toLowerCase().startsWith(lang));
+    if(!v){
+      // fallback per codice breve (es 'en' => 'en-GB'/'en-US')
+      v = voices.find(v => v.lang && v.lang.toLowerCase().startsWith(lang.split('-')[0]));
+    }
+    // fallback finale: una voce inglese
+    if(!v){
+      v = voices.find(v => v.lang && v.lang.toLowerCase().startsWith('en')) || voices[0];
+    }
+    return v;
   }
-}
-function add(type, txt){
-  const d=document.createElement('div');
-  d.className='msg '+(type==='me'?'me':'wd');
-  d.textContent=txt; chatEl.appendChild(d); chatEl.scrollTop=chatEl.scrollHeight;
-}
-function buildQuick(){
-  const wrap=document.createElement('div'); wrap.className='quick';
-  for (const it of UI[lang].buttons){
-    const b=document.createElement('button'); b.textContent=it;
-    b.onclick=()=>{ input.value=it; send(); }; wrap.appendChild(b);
+
+  function speak(text){
+    if(!voiceOn || !('speechSynthesis' in window)) return;
+    const u = new SpeechSynthesisUtterance(text);
+    if(!selectedVoice) selectedVoice = pickVoiceFor(LANG);
+    if(selectedVoice){ u.voice = selectedVoice; u.lang = selectedVoice.lang; }
+    else { u.lang = LANG; }
+    window.speechSynthesis.cancel();
+    window.speechSynthesis.speak(u);
   }
-  return wrap;
-}
-function welcome(){
-  add('wd', UI[lang].welcome);
-  chatEl.appendChild(buildQuick());
-}
-function refreshUI(){
-  // pulisci chat e rifai welcome
-  chatEl.innerHTML=''; welcome();
-  // placeholder input localizzato
-  input.placeholder = UI[lang].inputPH;
-  // aggiorna bottone lingua
-  setLangBar();
-}
 
-// ---- Voce: auto in base alla lingua ----
-let voiceOn=false, pick=null;
-function pickVoice(){
-  const want = LANGS[lang]?.ttsLang || 'en-US';
-  const hint = (LANGS[lang]?.voiceHint || '').toLowerCase();
-  const all = window.speechSynthesis ? (speechSynthesis.getVoices()||[]) : [];
-  // priorità: lang match + name hint → lang match → any
-  pick = all.find(v=>v.lang?.startsWith(want) && v.name?.toLowerCase().includes(hint))
-      || all.find(v=>v.lang?.startsWith(want))
-      || all[0] || null;
-}
-if ('speechSynthesis' in window){
-  pickVoice(); window.speechSynthesis.onvoiceschanged = pickVoice;
-}
-function warm(){ try{ const u=new SpeechSynthesisUtterance(''); if(pick) u.voice=pick; u.lang=LANGS[lang]?.ttsLang||'en-US'; speechSynthesis.cancel(); speechSynthesis.speak(u);}catch{} }
-function speak(t){
-  if(!voiceOn||!('speechSynthesis' in window))return;
-  try{ const u=new SpeechSynthesisUtterance(t); if(pick) u.voice=pick; u.lang=LANGS[lang]?.ttsLang||'en-US'; speechSynthesis.cancel(); speechSynthesis.speak(u);}catch{}
-}
-document.getElementById('voiceBtn').addEventListener('click',e=>{
-  voiceOn=!voiceOn; e.currentTarget.setAttribute('aria-pressed',String(voiceOn));
-  e.currentTarget.textContent = voiceOn ? '🔊 Voice: On' : '🔇 Voice: Off';
-  if(voiceOn) warm();
-});
+  // Assicura che le voci siano caricate in Safari/iOS
+  window.speechSynthesis.onvoiceschanged = () => {
+    selectedVoice = pickVoiceFor(LANG);
+  };
 
-// ---- Invio messaggi ----
-async function send(){
-  const text=(input.value||'').trim(); if(!text) return;
-  add('me',text); input.value='';
-  try{
-    const r=await fetch('/api/message',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:text, lang})});
-    const data=await r.json(); const bot=data.text||'…';
-    add('wd',bot); speak(bot);
-  }catch{ add('wd','Network error. Please try again.'); }
-}
-sendBtn.addEventListener('click',send);
-input.addEventListener('keydown',e=>{ if(e.key==='Enter') send(); });
+  // Toggle voce
+  const voiceBtn = document.getElementById('voiceBtn');
+  voiceBtn.addEventListener('click', () => {
+    voiceOn = !voiceOn;
+    voiceBtn.dataset.on = voiceOn ? '1' : '0';
+    voiceBtn.textContent = voiceOn ? DATA[LANG].voiceOn : DATA[LANG].voiceOff;
+    if(voiceOn){ speak(DATA[LANG].hi); }
+  });
 
-// Init
-setLangBar();
-refreshUI();
+  // Risposte
+  const out = document.getElementById('answer');
+  document.querySelectorAll('.chip').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const key = btn.dataset.key;
+      const text = (DATA[LANG].answers[key]) || '';
+      out.textContent = text;
+      speak(text);
+    });
+  });
 </script>
-</body></html>`;
-  res.setHeader('content-type','text/html; charset=utf-8');
+</body>
+</html>`;
+  res.setHeader('content-type', 'text/html; charset=utf-8');
   res.end(html);
 });
 
-// ---------- Start ----------
-const port = process.env.PORT || 8787;
-app.listen(port, ()=>console.log('Guest assistant up on http://localhost:'+port));
+const port = process.env.PORT || 10000;
+app.listen(port, () => console.log('Guest assistant up on http://localhost:'+port));
